@@ -1,9 +1,10 @@
+#!/usr/bin/env python3
+
 import io
 import os
 import sys
 import toml
 import time
-import subprocess
 from pathlib import PosixPath
 
 
@@ -41,31 +42,37 @@ def parse_args():
     return config.expanduser(), colors_file.expanduser(), watch
 
 
+def exists_and_true(field, config):
+    return field in config and config[field]
+
+
 def generate_colors(config, colors):
     for app in config['config']:
         appcon = config['config'][app]
         colorgen = config['colorgen']
 
         with io.open(PosixPath(colorgen['dir'], appcon['path']).expanduser(), 'w') as file:
-            if 'base16' in appcon and appcon['base16']:
-                file.write('scheme: ' + colors['base16']['scheme'] + '\n')
-                file.write('author: ' + colors['base16']['author'] + '\n')
+            if 'before' in appcon:
+                file.write(appcon['before'] + '\n')
+            if exists_and_true('base16', appcon):
+                if exists_and_true('meta', appcon):
+                    file.write('scheme: ' + colors['base16']['scheme'] + '\n')
+                    file.write('author: ' + colors['base16']['author'] + '\n')
                 for name in colors['base16']:
                     if name != 'scheme' and name != 'author':
                         value = colors['colors'][colors['base16'][name]]
-                        file.write(appcon['format'].format(name=name, value=value) + '\n')
+                        file.write(appcon['format'].format(
+                            name=name, value=value) + '\n')
             else:
-                if 'before' in appcon:
-                    file.write(appcon['before'] + '\n')
                 for name in colors['colors']:
                     value = colors['colors'][name]
-                    file.write(appcon['format'].format(name=name, value=value) + '\n')
-                if 'after' in appcon:
-                    file.write(appcon['after'] + '\n')
+                    file.write(appcon['format'].format(
+                        name=name, value=value) + '\n')
+            if 'after' in appcon:
+                file.write(appcon['after'] + '\n')
 
-        if colorgen['reload'] and 'reload' in appcon:
+        if 'reload' in appcon:
             os.system(appcon['reload'])
-
 
 
 if __name__ == "__main__":
